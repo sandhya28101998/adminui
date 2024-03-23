@@ -4,9 +4,18 @@ import { useSnackbar } from "notistack";
 import { Box, Stack } from "@mui/material";
 import axios from "axios";
 import TableView from "../TabelView";
-import SearchBox from "../SearchBar";
 import ActionsArea from "../ActionsArea";
-import config from "../.././config.json";
+import config from "../../config.json";
+import SearchBox from "../SearchBar";
+
+/**
+ * @typedef User
+ * @type {object}
+ * @property {number} id - User ID.
+ * @property {string} name - User Name.
+ * @property {string} email - User Email.
+ * @property {string} role - User Role.
+ */
 
 const UserList = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -24,8 +33,31 @@ const UserList = () => {
   }, []);
 
   useEffect(() => {
+    const searchUser = () => {
+      /**
+       * Search users in all field
+       * @param {User} User
+       * @return {boolean}
+       */
+
+      const filteredUsers = users.filter((user) => {
+        // String.search(pattern) -> This will search if any pattern matches
+        // It returns -1 -> if string not found, else 0...n for first find
+        const searchPattern = new RegExp(search, "i");
+
+        // Search all the fields
+        if (user.name.search(searchPattern) !== -1) return true;
+        if (user.email.search(searchPattern) !== -1) return true;
+        if (user.role.search(searchPattern) !== -1) return true;
+
+        return false;
+      });
+
+      setFound(filteredUsers);
+    };
     searchUser();
-  }, [search]);
+    setRowLimit(10);
+  }, [search, users]);
 
   const fetchData = async () => {
     const baseUrl = `${config.endpoint}`;
@@ -42,21 +74,19 @@ const UserList = () => {
     }
   };
 
-  const searchUser = () => {
-    const filteredUsers = users.filter((user) => {
-      const searchPattern = new RegExp(search, "i");
+  /**
+   * Function to perform search based on 'search' prop's state change.
+   */
 
-      if (user.name.search(searchPattern) !== -1) return true;
-      if (user.email.search(searchPattern) !== -1) return true;
-      if (user.role.search(searchPattern) !== -1) return true;
-
-      return false;
-    });
-
-    setFound(filteredUsers);
-  };
+  /**
+   * Delete handle for each record in Table View
+   *
+   * @param {number} id User ID
+   * @returns {undefined}
+   */
 
   const handleDelete = (id) => {
+    // Get same array without the selected user (deletes it)
     const filteredUsers = users.filter((user) => user.id !== id);
     const filteredSearchResults = found.filter((user) => user.id !== id);
 
@@ -72,12 +102,27 @@ const UserList = () => {
     }
   };
 
+  /**
+   * Loads the current record data from users with userId
+   *
+   * @param {number} id User ID
+   * @returns {undefined}
+   */
+
   const loadEditData = (id) => {
     const userIndex = users.findIndex((user) => user.id === id);
     const user = users[userIndex];
 
     setEditData({ ...editData, [id]: { ...user } });
   };
+
+  /**
+   *
+   * Changes in user data happens in-memory
+   *
+   * @param {number} id userId
+   * @returns {undefined}
+   */
 
   const modifiedData = (id) => {
     const dataIndex = users.findIndex((user) => user.id === id);
@@ -103,6 +148,13 @@ const UserList = () => {
     }
   };
 
+  /**
+   * Edit Handle to enable / disable the edit mode
+   *
+   * @param {number} id userId
+   * @returns {undefined}
+   */
+
   const editUserData = (id) => {
     if (selectedEdit.has(id)) {
       modifiedData(id);
@@ -112,6 +164,7 @@ const UserList = () => {
       return;
     }
 
+    // Open Edit functionality
     const newSelectedEdit = new Set(selectedEdit);
     newSelectedEdit.add(id);
     setSelectedEdit(newSelectedEdit);
@@ -119,12 +172,29 @@ const UserList = () => {
     loadEditData(id);
   };
 
+  /**
+   * Handles changes of records which are open in edit Mode
+   *
+   * @param {object} e
+   * @param {number} id userID
+   * @param {string} key field of User record to be updated
+   * @returns {undefined}
+   */
+
   const handleEditChange = (e, id, key) => {
     setEditData({
       ...editData,
       [id]: { ...editData[id], [key]: e.target.value },
     });
   };
+
+  /**
+   * checkbox click and update
+   * add / remove clicked record
+   *
+   * @param {number} id userId
+   * @returns {undefined}
+   */
 
   const handleCheckboxClick = (e, id) => {
     let newSelected = new Set(selected);
@@ -136,6 +206,13 @@ const UserList = () => {
     }
     setSelected(newSelected);
   };
+
+  /**
+   * Adds / removes all the current page rows to selected
+   *
+   * @param {object} event window Event object
+   * @returns {undefined}
+   */
 
   const SelectAllClick = (event) => {
     const low = (currentPage - 1) * rowLimit;
@@ -156,6 +233,8 @@ const UserList = () => {
 
     setSelected(newSelected);
   };
+
+  // handle to Delete Current Selected User Row
 
   const handleDeleteSelected = () => {
     let deletetedCount = users.length;
@@ -181,6 +260,7 @@ const UserList = () => {
     }
   };
 
+  //  Main component
   return (
     <Stack
       className="user-list-container"
